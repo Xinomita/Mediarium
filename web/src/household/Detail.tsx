@@ -326,7 +326,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
             {!!detail.rating && (
               <span>
                 <Icon name="star" size={13} />
-                {detail.rating.toFixed(1)}
+                TMDB audience {detail.rating.toFixed(1)} / 10
               </span>
             )}
           </p>

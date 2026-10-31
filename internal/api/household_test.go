@@ -57,20 +57,22 @@ func TestHouseholdProgressAndPathConfinement(t *testing.T) {
 	}
 	progress := map[string]any{"kind": "movie", "id": m.ID, "path": "Example.mp4", "position": 30, "duration": 120}
 	putJSONStatus(t, member, base+"/api/household/progress", progress, 200)
-	type response struct {
-		Rails []struct {
-			ID    string
-			Items []household.Title
-		}
+	items := getJSON[[]household.Title](t, member, base+"/api/household/library")
+	if len(items) != 1 || items[0].Progress == nil || items[0].Progress.Position != 30 {
+		t.Fatalf("Resume missing: %+v", items)
 	}
-	home := getJSON[response](t, member, base+"/api/household/home")
-	if len(home.Rails) == 0 || home.Rails[0].ID != "continue" || home.Rails[0].Items[0].Progress.Position != 30 {
-		t.Fatalf("Resume missing: %+v", home)
+	other := getJSON[[]household.Title](t, admin, base+"/api/household/library")
+	if other[0].Progress != nil {
+		t.Fatal("Watch history leaked")
 	}
-	other := getJSON[response](t, admin, base+"/api/household/home")
-	for _, rail := range other.Rails {
-		if rail.ID == "continue" {
-			t.Fatal("Watch history leaked")
+	home := getJSON[struct {
+		Rails []struct{ Items []household.Title }
+	}](t, member, base+"/api/household/home?kind=movie")
+	for _, rail := range home.Rails {
+		for _, item := range rail.Items {
+			if item.LibraryID != 0 {
+				t.Fatal("Owned media leaked into discovery")
+			}
 		}
 	}
 	// A new playback reads the saved position and streams through the original
@@ -90,12 +92,11 @@ func TestHouseholdProgressAndPathConfinement(t *testing.T) {
 	// Finishing removes the title from Continue Watching, not the library.
 	progress["position"] = 120
 	putJSONStatus(t, member, base+"/api/household/progress", progress, 200)
-	home = getJSON[response](t, member, base+"/api/household/home")
-	for _, rail := range home.Rails {
-		if rail.ID == "continue" {
-			t.Fatal("Completed title should not be in Continue Watching")
-		}
+	items = getJSON[[]household.Title](t, member, base+"/api/household/library")
+	if len(items) != 1 || items[0].Progress != nil {
+		t.Fatal("Completion must clear resume while retaining library")
 	}
+
 }
 
 func TestHouseholdFFmpegPlaybackLifecycle(t *testing.T) {
@@ -156,5 +157,36 @@ func TestHouseholdFFmpegPlaybackLifecycle(t *testing.T) {
 	}
 	if status, _ := doStatus(t, member, http.MethodGet, base+playlist); status != 404 {
 		t.Fatal("Closed session still accessible", status)
+	}
+}
+
+func TestHouseholdWatchlistPreservesOfflineOwnedTitlesAndIsolation(t *testing.T) {
+	server, base, admin, member, _ := familyServer(t)
+	_, err := server.MovieRepo.Add(library.Movie{TMDBID: 603, Title: "Saved local film", Year: 1999})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := household.Defaults()
+	p.Watchlist = []string{"movie:603", "movie:77777777"}
+	putJSONStatus(t, member, base+"/api/household/preferences", p, 200)
+	items := getJSON[[]household.Title](t, member, base+"/api/household/watchlist")
+	if len(items) != 1 || items[0].TMDBID != 603 {
+		t.Fatal("Offline library title missing", items)
+	}
+	other := getJSON[[]household.Title](t, admin, base+"/api/household/watchlist")
+	if len(other) != 0 {
+		t.Fatal("List leaked between accounts")
+	}
+	resp, err := member.Get(base + "/api/household/watchlist")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("X-Watchlist-Partial") != "true" {
+		t.Fatal("Missing partial-provider recovery notice")
+	}
+	saved := getJSON[household.Preferences](t, member, base+"/api/household/preferences")
+	if len(saved.Watchlist) != 2 {
+		t.Fatal("Unresolved saved title was deleted")
 	}
 }

@@ -64,7 +64,7 @@ export default function HouseholdShell() {
         </Link>
         <nav className="hh-nav" aria-label="Main navigation">
           <Link className={home && !kind ? "active" : ""} to="/watch">
-            Watch now
+            Discover
           </Link>
           <Link
             className={home && kind === "movie" ? "active" : ""}

@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Icon from "../components/Icon";
 import type { HouseholdTitle } from "./api";
@@ -82,9 +82,13 @@ export function Artwork({
 export function TitleCard({
   title,
   eager = false,
+  discovery = false,
+  poster = false,
 }: {
   title: HouseholdTitle;
   eager?: boolean;
+  discovery?: boolean;
+  poster?: boolean;
 }) {
   return (
     <Link
@@ -92,8 +96,8 @@ export function TitleCard({
       to={titleLink(title.kind, title.tmdbId)}
       state={{ title }}
     >
-      <Artwork title={title} eager={eager} />
-      {title.progress && title.progress.duration > 0 && (
+      <Artwork title={title} eager={eager} wide={!poster} />
+      {!discovery && title.progress && title.progress.duration > 0 && (
         <div className="hh-card-progress">
           <span
             style={{
@@ -107,64 +111,58 @@ export function TitleCard({
         <p>
           {title.year > 0 && <span>{title.year}</span>}
           <span>{title.kind === "tv" ? "Series" : "Film"}</span>
-          {title.available && (
+          {!discovery && title.available && (
             <span className="hh-ready">
               <Icon name="play" size={11} /> Ready to play
             </span>
           )}
         </p>
+        {!!title.rating && <p className="hh-card-rating">TMDB audience <strong>{title.rating.toFixed(1)}</strong><span>/ 10</span></p>}
+        {discovery && title.reason && <p className="hh-card-reason">{title.reason}</p>}
       </div>
     </Link>
   );
 }
 export function Rail({
-  title,
-  items,
-  eager = false,
+  title, subtitle, items, eager = false, discovery = false, poster = false,
 }: {
   title: string;
+  subtitle?: string;
   items: HouseholdTitle[];
   eager?: boolean;
+  discovery?: boolean;
+  poster?: boolean;
 }) {
   const rail = useRef<HTMLDivElement>(null);
+  const trackId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const [edges, setEdges] = useState({ start: true, end: true });
+  useEffect(() => {
+    const el = rail.current;
+    if (!el || expanded) return;
+    const measure = () => setEdges({ start: el.scrollLeft < 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(el);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => { resize.disconnect(); el.removeEventListener("scroll", measure); };
+  }, [expanded, items.length]);
   if (items.length === 0) return null;
-  const move = (direction: number) =>
-    rail.current?.scrollBy({
-      left: direction * rail.current.clientWidth * 0.82,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-    });
-  return (
-    <section className="hh-rail" aria-label={title}>
-      <div className="hh-section-head">
-        <h2>{title}</h2>
-        <div className="hh-rail-buttons">
-          <button
-            className="hh-round"
-            aria-label={`Previous titles in ${title}`}
-            onClick={() => move(-1)}
-          >
-            <Icon name="chevron-left" size={19} />
-          </button>
-          <button
-            className="hh-round"
-            aria-label={`More titles in ${title}`}
-            onClick={() => move(1)}
-          >
-            <Icon name="chevron-right" size={19} />
-          </button>
-        </div>
+  const move = (direction: number) => rail.current?.scrollBy({
+    left: direction * rail.current.clientWidth * .82,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+  });
+  return <section className={`hh-rail ${poster ? "hh-poster-rail" : ""} ${expanded ? "hh-rail-expanded" : ""}`} aria-label={title}>
+    <div className="hh-section-head">
+      <div><h2>{title}</h2>{subtitle && <p className="hh-shelf-subtitle">{subtitle}</p>}</div>
+      <div className="hh-rail-buttons">
+        {discovery && <button className="hh-shelf-toggle" aria-expanded={expanded} aria-controls={trackId} aria-label={`${expanded ? "Collapse" : "See all"} ${title}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "Show shelf" : "See all"}<span>{items.length}</span></button>}
+        {!expanded && <><button className="hh-round" disabled={edges.start} aria-label={`Previous titles in ${title}`} aria-controls={trackId} onClick={() => move(-1)}><Icon name="chevron-left" size={19} /></button>
+          <button className="hh-round" disabled={edges.end} aria-label={`More titles in ${title}`} aria-controls={trackId} onClick={() => move(1)}><Icon name="chevron-right" size={19} /></button></>}
       </div>
-      <div className="hh-rail-track" ref={rail}>
-        {items.map((t, i) => (
-          <TitleCard
-            key={`${t.kind}:${t.tmdbId}`}
-            title={t}
-            eager={eager && i < 4}
-          />
-        ))}
-      </div>
-    </section>
-  );
+    </div>
+    <div className={expanded ? "hh-title-grid hh-shelf-grid" : "hh-rail-track"} id={trackId} ref={rail} role="group" aria-label={`${title} titles`} tabIndex={expanded ? undefined : 0}>
+      {items.map((t, i) => <TitleCard key={`${t.kind}:${t.tmdbId}`} title={t} eager={eager && i < 4} discovery={discovery} poster={poster} />)}
+    </div>
+  </section>;
 }

@@ -2009,3 +2009,50 @@
 .hh-home-warning > .hh-button {
   margin-left: 43px;
 }
+
+/* Discovery shelves keep browsing depth visible without crowding the artwork. */
+.hh-discovery-no-hero { margin-top: 0; padding-top: 38px; }
+.hh-discovery-toolbar { margin: 0 4.2% 32px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.hh-discovery-toolbar h1, .hh-discovery-toolbar h2 { font-size: 30px; letter-spacing: -.8px; font-weight: 680; }
+.hh-discovery-tools { display: flex; align-items: center; gap: 22px; }
+.hh-genre-filter { display: flex; align-items: center; gap: 11px; }
+.hh-genre-filter label { color: #aaaab5; font-size: 12px; }
+.hh-genre-filter select { max-width: 230px; font-size: 13px; padding: 9px 12px; }
+.hh-discovery-search { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.hh-shelf-subtitle { margin-top: 7px !important; color: #a5a5b2; font-size: 13px; max-width: 65ch; }
+.hh-rail-buttons { align-items: center; flex-shrink: 0; }
+.household .hh-shelf-toggle { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 10px 6px; font-size: 13px; white-space: nowrap; }
+.hh-shelf-toggle span { color: #888894; font-size: 11px; font-variant-numeric: tabular-nums; }
+.household .hh-round:disabled { cursor: default; opacity: .3; }
+.hh-poster-rail .hh-rail-track { grid-auto-columns: clamp(160px, 13.8vw, 230px); }
+.hh-card-copy .hh-card-rating { color: #babac5; font-size: 11px; gap: 4px; margin-top: 7px; }
+.hh-card-rating strong { color: #e8e8ee; font-weight: 650; }
+.hh-card-copy .hh-card-reason { display: block; color: #b8c3bb; line-height: 1.45; font-size: 12px; margin-top: 7px; }
+.hh-shelf-grid { margin: 0 4.2%; }
+.hh-poster-rail .hh-shelf-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.hh-explore-more { display: grid; justify-items: center; gap: 14px; margin: 40px 4.2% 10px; }
+.hh-explore-more p { color: #9b9ba8; font-size: 13px; }
+.hh-page > .hh-rail > .hh-section-head { margin-left: 0; margin-right: 0; }
+.hh-page > .hh-rail .hh-rail-track { padding-left: 0; padding-right: 0; scroll-padding: 0; }
+.hh-library-all { font-size: 24px; margin: 28px 0 20px !important; }
+.hh-feedback-find { grid-column: 1 / -1; justify-self: start; margin-bottom: 4px; }
+@media (max-width: 1100px) { .hh-poster-rail .hh-shelf-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .hh-discovery-toolbar { margin: 0 5% 28px; align-items: flex-start; flex-direction: column; gap: 14px; }
+  .hh-discovery-toolbar h1, .hh-discovery-toolbar h2 { font-size: 27px; }
+  .hh-discovery-tools { width: 100%; justify-content: space-between; gap: 12px; }
+  .hh-genre-filter select { max-width: 190px; }
+  .hh-rail-buttons { display: flex; gap: 4px; }
+  .hh-rail > .hh-section-head { gap: 10px; align-items: flex-start; }
+  .hh-section-head h2 { font-size: 20px; }
+  .hh-shelf-subtitle { font-size: 12px; }
+  .hh-rail-buttons .hh-round { width: 28px; height: 32px; }
+  .household .hh-shelf-toggle { font-size: 12px; padding: 6px 3px; gap: 5px; }
+  .hh-shelf-toggle span { display: none; }
+  .hh-poster-rail .hh-rail-track { grid-auto-columns: 43vw; }
+  .hh-poster-rail .hh-shelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hh-shelf-grid { margin: 0 5%; }
+  .hh-card-copy .hh-card-reason { font-size: 11px; }
+  .hh-discovery-hero { height: 620px; }
+  .hh-discovery-hero .hh-hero-copy { bottom: 8%; }
+}

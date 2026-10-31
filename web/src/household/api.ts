@@ -35,7 +35,9 @@ export interface Preferences {
   liked: string[];
 }
 export interface HomeResponse {
-  rails: { id: string; title: string; items: HouseholdTitle[] }[];
+  rails: { id: string; title: string; subtitle?: string; items: HouseholdTitle[] }[];
+  page: number;
+  hasMore: boolean;
   hero?: HouseholdTitle;
   preferences: Preferences;
   warnings: string[];
@@ -75,8 +77,14 @@ async function req<T>(
 }
 export const household = {
   library: () => req<HouseholdTitle[]>("/library"),
-  home: (signal?: AbortSignal) =>
-    req<HomeResponse>("/home", undefined, "GET", signal),
+  watchlist: async () => {
+    const r = await fetch(withBase("/api/household/watchlist"), { credentials: "include" });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Your saved titles could not be loaded.");
+    return { items: data as HouseholdTitle[], partial: r.headers.get("X-Watchlist-Partial") === "true" };
+  },
+  home: (signal?: AbortSignal, kind?: Kind, page = 1) =>
+    req<HomeResponse>(`/home?page=${page}${kind ? `&kind=${kind}` : ""}`, undefined, "GET", signal),
   preferences: () => req<Preferences>("/preferences"),
   savePreferences: (p: Preferences) =>
     req<Preferences>("/preferences", p, "PUT"),

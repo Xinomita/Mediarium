@@ -64,22 +64,15 @@ func TestHouseholdDownloadImportAndPlayback(t *testing.T) {
 	}
 	rel := filepath.Base(imported.FilePath)
 	writeBody(t, strings.TrimSuffix(imported.FilePath, filepath.Ext(imported.FilePath))+".en.srt", "1\n00:00:31,000 --> 00:00:34,000\nDownloaded fixture subtitle\n")
-	home := getJSON[struct {
-		Rails []struct {
-			ID    string
-			Items []household.Title
-		}
-	}](t, client, base+"/api/household/home")
+	items := getJSON[[]household.Title](t, client, base+"/api/household/library")
 	ready := false
-	for _, rail := range home.Rails {
-		for _, item := range rail.Items {
-			if item.LibraryID == m.ID && item.Available {
-				ready = true
-			}
+	for _, item := range items {
+		if item.LibraryID == m.ID && item.Available {
+			ready = true
 		}
 	}
 	if !ready {
-		t.Fatal("download did not appear ready on household home")
+		t.Fatal("Download did not appear ready in household library")
 	}
 	playReq := map[string]any{"kind": "movie", "id": m.ID, "path": rel}
 	play := postJSON[map[string]any](t, client, base+"/api/household/playback", playReq, 200)

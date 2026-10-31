@@ -125,6 +125,9 @@ type Title struct {
 	Status      string    `json:"status,omitempty"`
 	Reason      string    `json:"reason,omitempty"`
 	Progress    *Progress `json:"progress,omitempty"`
+	Affinity    float64   `json:"-"`
+	SeedKey     string    `json:"-"`
+	SeedLabel   string    `json:"-"`
 	Popularity  float64   `json:"-"`
 	ReleaseDate string    `json:"-"`
 }
@@ -171,14 +174,14 @@ func Score(t Title, p Preferences, now time.Time) float64 {
 	if slices.Contains(p.Languages, t.Language) {
 		relevance = math.Max(relevance, 0.4)
 	}
-	recency := 0.0
-	if d, e := time.Parse("2006-01-02", t.ReleaseDate); e == nil {
-		days := math.Max(0, now.Sub(d).Hours()/24)
-		recency = math.Exp(-days / 730)
-	}
-	return .65*quality + .15*popularity + .10*relevance + .10*recency
+	// Quality and title-level affinity dominate. Freshness belongs to a
+	// dedicated shelf, so it cannot promote a mediocre new release everywhere.
+	return .64*quality + .30*math.Min(1, t.Affinity) + .05*relevance + .01*popularity
 }
 func Reason(t Title, p Preferences) string {
+	if t.SeedLabel != "" {
+		return t.SeedLabel
+	}
 	for i, g := range t.GenreIDs {
 		if slices.Contains(p.PreferredGenres, g) {
 			if i < len(t.Genres) {
@@ -188,12 +191,12 @@ func Reason(t Title, p Preferences) string {
 		}
 	}
 	if t.VoteCount >= 250 && t.Rating >= 7 {
-		return fmt.Sprintf("%.1f audience rating · %s votes", t.Rating, comma(t.VoteCount))
+		return fmt.Sprintf("Based on %s audience votes", comma(t.VoteCount))
 	}
 	if t.Year >= time.Now().Year()-1 {
 		return "A well-rated recent release"
 	}
-	return "Balances audience ratings and popularity"
+	return "Selected from TMDB audience ratings"
 }
 func comma(n int) string {
 	s := strconv.Itoa(n)
@@ -206,6 +209,9 @@ func comma(n int) string {
 // Rank bounds popularity, deduplicates IDs, and diversifies primary genres.
 // Its input pool is a union of popular, top-rated and recent catalogue pages.
 func Rank(in []Title, p Preferences, now time.Time, limit int) []Title {
+	if limit <= 0 {
+		return []Title{}
+	}
 	seen := map[string]bool{}
 	items := []Title{}
 	for _, t := range in {

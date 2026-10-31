@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { household, type Preferences } from "./api";
 import { Loading, Problem } from "./Shared";
@@ -116,8 +117,8 @@ export default function HouseholdPreferences() {
         <p className="hh-eyebrow">A better starting point</p>
         <h1>Your taste</h1>
         <p>
-          Recommendations should suit you. These choices shape discovery; they
-          never hide your library or limit a search.
+          Start with the titles you like, then choose genres and languages.
+          Your library and search stay available in full.
         </p>
       </div>
       {error && (
@@ -137,67 +138,36 @@ export default function HouseholdPreferences() {
         >
           <section className="hh-preference-section">
             <div>
-              <h2>Original languages</h2>
-              <p>Choose up to four languages you like to watch.</p>
-            </div>
-            <div className="hh-preference-controls">
-              <div className="hh-choice-grid">
-                {LANGUAGES.map(([code, label]) => (
-                  <label key={code} className="hh-choice">
-                    <input
-                      type="checkbox"
-                      checked={prefs.languages.includes(code)}
-                      disabled={
-                        !prefs.languages.includes(code) &&
-                        prefs.languages.length >= 4
-                      }
-                      onChange={() =>
-                        update({ languages: toggle(prefs.languages, code) })
-                      }
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              <label className="hh-switch-row">
-                <input
-                  type="checkbox"
-                  checked={prefs.includeOtherLanguages}
-                  onChange={(e) =>
-                    update({ includeOtherLanguages: e.target.checked })
-                  }
-                />
-                <span>Include discoveries in other languages</span>
-              </label>
-            </div>
-          </section>
-          <section className="hh-preference-section">
-            <div>
-              <h2>Quality over hype</h2>
+              <h2>Titles you like</h2>
               <p>
-                Popularity is only one signal. Audience ratings are balanced
-                against the number of votes so a handful of perfect scores
-                cannot dominate.
+                Like films and series on their title pages to shape future picks.
+                “Not for me” keeps a title out of discovery.
               </p>
             </div>
-            <div className="hh-preference-controls">
-              <label className="hh-range-label" htmlFor="minimum-rating">
-                Minimum audience rating{" "}
-                <output>{prefs.minRating.toFixed(1)} / 10</output>
-              </label>
-              <input
-                id="minimum-rating"
-                className="hh-range"
-                type="range"
-                min="0"
-                max="9"
-                step=".5"
-                value={prefs.minRating}
-                onChange={(e) => update({ minRating: Number(e.target.value) })}
-              />
-              <p className="hh-muted">
-                A higher threshold produces a smaller, more selective catalogue.
-              </p>
+            <div className="hh-preference-controls hh-feedback-summary">
+              <Link to="/watch/search" className="hh-button hh-secondary hh-feedback-find"><Icon name="search" size={16} />Find a favourite to like</Link>
+              <span>{prefs.liked.length} liked titles</span>
+              {prefs.liked.length > 0 && (
+                <button
+                  type="button"
+                  className="hh-text-button"
+                  disabled={saving}
+                  onClick={() => void resetFeedback("liked")}
+                >
+                  Clear likes
+                </button>
+              )}
+              <span>{prefs.hidden.length} hidden titles</span>
+              {prefs.hidden.length > 0 && (
+                <button
+                  type="button"
+                  className="hh-text-button"
+                  disabled={saving}
+                  onClick={() => void resetFeedback("hidden")}
+                >
+                  Show hidden titles again
+                </button>
+              )}
             </div>
           </section>
           <section className="hh-preference-section">
@@ -240,6 +210,42 @@ export default function HouseholdPreferences() {
           </section>
           <section className="hh-preference-section">
             <div>
+              <h2>Original languages</h2>
+              <p>Choose up to four languages you like to watch.</p>
+            </div>
+            <div className="hh-preference-controls">
+              <div className="hh-choice-grid">
+                {LANGUAGES.map(([code, label]) => (
+                  <label key={code} className="hh-choice">
+                    <input
+                      type="checkbox"
+                      checked={prefs.languages.includes(code)}
+                      disabled={
+                        !prefs.languages.includes(code) &&
+                        prefs.languages.length >= 4
+                      }
+                      onChange={() =>
+                        update({ languages: toggle(prefs.languages, code) })
+                      }
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+              <label className="hh-switch-row">
+                <input
+                  type="checkbox"
+                  checked={prefs.includeOtherLanguages}
+                  onChange={(e) =>
+                    update({ includeOtherLanguages: e.target.checked })
+                  }
+                />
+                <span>Include discoveries in other languages</span>
+              </label>
+            </div>
+          </section>
+          <section className="hh-preference-section">
+            <div>
               <h2>Leave these out</h2>
               <p>Keep these genres off your recommendation rails.</p>
             </div>
@@ -270,35 +276,31 @@ export default function HouseholdPreferences() {
           </section>
           <section className="hh-preference-section">
             <div>
-              <h2>Your feedback</h2>
+              <h2>Audience rating filter</h2>
               <p>
-                Like a title to shape future picks. “Not for me” removes it from
-                recommendations.
+                Optional: narrow discovery further using TMDB audience ratings.
+                These are audience scores, not critic reviews or a personal match score.
               </p>
             </div>
-            <div className="hh-preference-controls hh-feedback-summary">
-              <span>{prefs.liked.length} liked titles</span>
-              {prefs.liked.length > 0 && (
-                <button
-                  type="button"
-                  className="hh-text-button"
-                  disabled={saving}
-                  onClick={() => void resetFeedback("liked")}
-                >
-                  Clear likes
-                </button>
-              )}
-              <span>{prefs.hidden.length} hidden titles</span>
-              {prefs.hidden.length > 0 && (
-                <button
-                  type="button"
-                  className="hh-text-button"
-                  disabled={saving}
-                  onClick={() => void resetFeedback("hidden")}
-                >
-                  Show hidden titles again
-                </button>
-              )}
+            <div className="hh-preference-controls">
+              <label className="hh-range-label" htmlFor="minimum-rating">
+                Minimum TMDB audience rating{" "}
+                <output>{prefs.minRating.toFixed(1)} / 10</output>
+              </label>
+              <input
+                id="minimum-rating"
+                className="hh-range"
+                type="range"
+                min="0"
+                max="9"
+                step=".5"
+                value={prefs.minRating}
+                onChange={(e) => update({ minRating: Number(e.target.value) })}
+              />
+              <p className="hh-muted">
+                Discovery already favours well-rated titles with enough votes.
+                Raising this floor narrows that selection; search still includes the full catalogue.
+              </p>
             </div>
           </section>
           <div className="hh-save-bar">

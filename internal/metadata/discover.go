@@ -26,12 +26,15 @@ const maxDiscoverPages = 500
 // DiscoverQuery filters a browse of TMDB's catalogue. Zero values mean "any".
 // Year is an exact year and wins over the YearFrom/YearTo range.
 type DiscoverQuery struct {
-	Genre    int
-	Year     int
-	YearFrom int
-	YearTo   int
-	Sort     string
-	Page     int
+	HomeReleased   bool   // movies: only digital/disc releases dated on or before today
+	ReleasedBefore string // exclude future first-air dates
+	MinVotes       int
+	Genre          int
+	Year           int
+	YearFrom       int
+	YearTo         int
+	Sort           string
+	Page           int
 
 	// Language is the original language of the title (a code like "ko"), not
 	// the language its name and summary are shown in.
@@ -137,10 +140,17 @@ func (q DiscoverQuery) params(dateField, yearParam string, votesFloor int) url.V
 	if q.Language != "" {
 		v.Set("with_original_language", q.Language)
 	}
-	minVotes := 0
+	minVotes := q.MinVotes
+	if q.HomeReleased && dateField == "primary_release_date" {
+		v.Set("with_release_type", "4|5")
+		v.Set("release_date.lte", time.Now().UTC().Format("2006-01-02"))
+	}
+	if q.ReleasedBefore != "" {
+		v.Set(dateField+".lte", q.ReleasedBefore)
+	}
 	if q.MinRating > 0 {
 		v.Set("vote_average.gte", strconv.Itoa(q.MinRating))
-		minVotes = votesFloor
+		minVotes = max(minVotes, votesFloor)
 	}
 	switch q.Runtime {
 	case RuntimeShort:

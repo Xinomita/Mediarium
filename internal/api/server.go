@@ -467,6 +467,7 @@ func (s *Server) protectedRoutes() *routeTable {
 	// Household discovery and playback use the same authenticated account.
 	member.HandleFunc("GET /api/household/home", s.handleHouseholdHome)
 	member.HandleFunc("GET /api/household/library", s.handleHouseholdLibrary)
+	member.HandleFunc("GET /api/household/watchlist", s.handleHouseholdWatchlist)
 	member.HandleFunc("GET /api/household/art/{kind}/{id}/{variant}", s.handleHouseholdArt)
 	member.HandleFunc("GET /api/household/preferences", s.handleHouseholdPreferences)
 	member.HandleFunc("PUT /api/household/preferences", s.handleHouseholdSavePreferences)
