@@ -12,6 +12,7 @@ import Icon from "../components/Icon";
 import { usePoll } from "./usePoll";
 import { errorText } from "./utils";
 import "./household.css";
+import "./tv.css";
 
 export default function HouseholdShell() {
   const { user, setUser } = useAuth();
@@ -39,6 +40,14 @@ export default function HouseholdShell() {
     window.scrollTo({ top: 0 });
     document.title = "Mediarium";
   }, [location.pathname, location.search]);
+  useEffect(() => {
+    const back = () => {
+      if (Number(window.history.state?.idx) > 0) navigate(-1);
+      else navigate("/watch");
+    };
+    document.addEventListener("tv-navigate-back", back);
+    return () => document.removeEventListener("tv-navigate-back", back);
+  }, [navigate]);
   const signOut = async () => {
     try {
       await api.logout();
@@ -60,26 +69,30 @@ export default function HouseholdShell() {
           <span className="hh-brand-mark">
             <Icon name="play" size={16} />
           </span>
-          Mediarium
+          <span className="hh-brand-label">Mediarium</span>
         </Link>
         <nav className="hh-nav" aria-label="Main navigation">
-          <Link className={home && !kind ? "active" : ""} to="/watch">
-            Discover
+          <Link className={home && !kind ? "active" : ""} to="/watch" aria-label="Discover" aria-current={home && !kind ? "page" : undefined}>
+            <span className="hh-nav-symbol"><Icon name="compass" size={20} /></span><span className="hh-nav-label">Discover</span>
           </Link>
           <Link
             className={home && kind === "movie" ? "active" : ""}
             to="/watch?kind=movie"
+            aria-label="Films"
+            aria-current={home && kind === "movie" ? "page" : undefined}
           >
-            Films
+            <span className="hh-nav-symbol"><Icon name="film" size={20} /></span><span className="hh-nav-label">Films</span>
           </Link>
           <Link
             className={home && kind === "tv" ? "active" : ""}
             to="/watch?kind=tv"
+            aria-label="Series"
+            aria-current={home && kind === "tv" ? "page" : undefined}
           >
-            Series
+            <span className="hh-nav-symbol"><Icon name="tv" size={20} /></span><span className="hh-nav-label">Series</span>
           </Link>
-          <NavLink to="/watch/library">Library</NavLink>
-          <NavLink to="/watch/list">My list</NavLink>
+          <NavLink to="/watch/library" aria-label="Library"><span className="hh-nav-symbol"><Icon name="grid" size={20} /></span><span className="hh-nav-label">Library</span></NavLink>
+          <NavLink to="/watch/list" aria-label="My list"><span className="hh-nav-symbol"><Icon name="bookmark" size={20} /></span><span className="hh-nav-label">My list</span></NavLink>
         </nav>
         <div className="hh-nav-actions">
           <NavLink
@@ -88,6 +101,7 @@ export default function HouseholdShell() {
             aria-label="Search movies and series"
           >
             <Icon name="search" size={20} />
+            <span className="hh-tv-label hh-nav-label">Search</span>
           </NavLink>
           <NavLink
             className="hh-nav-icon hh-download-link"
@@ -95,6 +109,7 @@ export default function HouseholdShell() {
             aria-label={`Downloads${queue.data?.active ? `, ${queue.data.active} active` : ""}`}
           >
             <Icon name="download" size={20} />
+            <span className="hh-tv-label hh-nav-label">Downloads</span>
             {!!queue.data?.active && (
               <span className="hh-count">{queue.data.active}</span>
             )}
@@ -105,6 +120,7 @@ export default function HouseholdShell() {
           >
             <summary aria-label={`Account: ${name}`}>
               <span className="hh-avatar">{initials}</span>
+              <span className="hh-tv-label hh-nav-label">{name}</span>
             </summary>
             <div className="hh-account-menu">
               <strong>{name}</strong>
@@ -135,7 +151,7 @@ export default function HouseholdShell() {
         <Outlet />
       </main>
       <footer className="hh-footer">
-        <span>Mediarium · Your home cinema</span>
+        <span>Mediarium</span>
         <Link to="/watch/preferences">Your taste</Link>
         <a
           href="https://github.com/Xinomita/Mediarium/tree/codex/household"
@@ -145,8 +161,9 @@ export default function HouseholdShell() {
           Source code
         </a>
         <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
-          Film & TV data by TMDB
+          Artwork & metadata · TMDB
         </a>
+        <a href="https://data.imdb.com/non-commercial-datasets/" target="_blank" rel="noreferrer">Ratings · IMDb</a>
       </footer>
     </div>
   );

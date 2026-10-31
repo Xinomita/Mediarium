@@ -2130,6 +2130,8 @@ export interface TitleDetails {
   homepage?: string
   imdbId?: string
   cast?: CastMember[]
+  imdbRating?: number
+  imdbVotes?: number
   trailers?: Trailer[]
 }
 

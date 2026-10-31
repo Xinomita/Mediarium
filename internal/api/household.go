@@ -36,6 +36,7 @@ type householdCatalogEntry struct {
 	warning string
 	more    bool
 	expires time.Time
+	saved   time.Time
 	ready   chan struct{}
 }
 type householdCatalog struct {

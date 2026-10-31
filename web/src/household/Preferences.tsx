@@ -278,13 +278,13 @@ export default function HouseholdPreferences() {
             <div>
               <h2>Audience rating filter</h2>
               <p>
-                Optional: narrow discovery further using TMDB audience ratings.
+                Optional: narrow discovery further using IMDb ratings.
                 These are audience scores, not critic reviews or a personal match score.
               </p>
             </div>
             <div className="hh-preference-controls">
               <label className="hh-range-label" htmlFor="minimum-rating">
-                Minimum TMDB audience rating{" "}
+                Minimum IMDb rating{" "}
                 <output>{prefs.minRating.toFixed(1)} / 10</output>
               </label>
               <input

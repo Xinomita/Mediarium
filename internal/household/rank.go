@@ -108,34 +108,36 @@ type Progress struct {
 	UpdatedAt string  `json:"updatedAt"`
 }
 type Title struct {
-	Kind        string    `json:"kind"`
-	TMDBID      int       `json:"tmdbId"`
-	LibraryID   int64     `json:"libraryId,omitempty"`
-	Title       string    `json:"title"`
-	Year        int       `json:"year"`
-	Overview    string    `json:"overview,omitempty"`
-	PosterURL   string    `json:"posterUrl,omitempty"`
-	BackdropURL string    `json:"backdropUrl,omitempty"`
-	Genres      []string  `json:"genres"`
-	GenreIDs    []int     `json:"-"`
-	Rating      float64   `json:"rating,omitempty"`
-	VoteCount   int       `json:"voteCount,omitempty"`
-	Language    string    `json:"language,omitempty"`
-	Available   bool      `json:"available"`
-	Status      string    `json:"status,omitempty"`
-	Reason      string    `json:"reason,omitempty"`
-	Progress    *Progress `json:"progress,omitempty"`
-	Affinity    float64   `json:"-"`
-	SeedKey     string    `json:"-"`
-	SeedLabel   string    `json:"-"`
-	Popularity  float64   `json:"-"`
-	ReleaseDate string    `json:"-"`
+	Kind         string    `json:"kind"`
+	IMDbID       string    `json:"imdbId,omitempty"`
+	RatingSource string    `json:"ratingSource,omitempty"`
+	TMDBID       int       `json:"tmdbId"`
+	LibraryID    int64     `json:"libraryId,omitempty"`
+	Title        string    `json:"title"`
+	Year         int       `json:"year"`
+	Overview     string    `json:"overview,omitempty"`
+	PosterURL    string    `json:"posterUrl,omitempty"`
+	BackdropURL  string    `json:"backdropUrl,omitempty"`
+	Genres       []string  `json:"genres"`
+	GenreIDs     []int     `json:"-"`
+	Rating       float64   `json:"rating,omitempty"`
+	VoteCount    int       `json:"voteCount,omitempty"`
+	Language     string    `json:"language,omitempty"`
+	Available    bool      `json:"available"`
+	Status       string    `json:"status,omitempty"`
+	Reason       string    `json:"reason,omitempty"`
+	Progress     *Progress `json:"progress,omitempty"`
+	Affinity     float64   `json:"-"`
+	SeedKey      string    `json:"-"`
+	SeedLabel    string    `json:"-"`
+	Popularity   float64   `json:"-"`
+	ReleaseDate  string    `json:"-"`
 }
 
 func (t Title) Key() string { return t.Kind + ":" + strconv.Itoa(t.TMDBID) }
 
 // BayesianRating shrinks small voting samples toward a conservative prior.
-// These are TMDB audience votes, not critic scores.
+// Confidence-adjusted audience ratings, with the provider supplied by the caller.
 func BayesianRating(rating float64, votes int) float64 {
 	v := math.Max(0, float64(votes))
 	r := math.Max(0, math.Min(10, rating))

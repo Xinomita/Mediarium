@@ -23,3 +23,5 @@ USER 950:950
 EXPOSE 8264
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD wget -q -O /dev/null http://127.0.0.1:8264/api/version || exit 1
 ENTRYPOINT ["/usr/local/bin/mediarium"]
+
+ENV HOUSEHOLD_IMDB_RATINGS=1

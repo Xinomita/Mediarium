@@ -29,7 +29,7 @@ func TestHouseholdSeedsRespectFeedbackAndKind(t *testing.T) {
 	p.Watchlist = []string{"movie:4"}
 	lib := []household.Title{{Kind: "movie", TMDBID: 5, Available: true, PosterURL: "poster"}}
 	seeds := householdSeeds(p, lib, "movie")
-	if len(seeds) != 3 || seeds[0].Key != "movie:1" || seeds[0].Weight <= seeds[1].Weight || seeds[2].Label != "Inspired by your library: " {
+	if len(seeds) != 3 || seeds[0].Key != "movie:1" || seeds[0].Weight <= seeds[1].Weight || seeds[2].Label != "More like " {
 		t.Fatal(seeds)
 	}
 }
@@ -64,7 +64,7 @@ func TestHouseholdSeedSkipsPreviewAndUncataloguedTestVideo(t *testing.T) {
 		{Kind: "movie", TMDBID: 3, Available: true, PosterURL: "poster", Progress: &household.Progress{Position: 600}},
 	}
 	seeds := householdSeeds(household.Defaults(), lib, "movie")
-	if len(seeds) != 2 || seeds[0].Key != "movie:3" || seeds[0].Label != "More like " || seeds[1].Label != "Inspired by your library: " {
+	if len(seeds) != 2 || seeds[0].Key != "movie:3" || seeds[0].Label != "More like " || seeds[1].Label != "More like " {
 		t.Fatal(seeds)
 	}
 }

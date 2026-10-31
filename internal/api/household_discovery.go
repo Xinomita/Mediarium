@@ -57,7 +57,7 @@ func householdSeeds(p household.Preferences, lib []household.Title, kind string)
 	}
 	for _, t := range lib {
 		if t.Available && t.PosterURL != "" {
-			add(t.Key(), "Inspired by your library: ", .45)
+			add(t.Key(), "More like ", .45)
 		}
 	}
 	return out
@@ -75,46 +75,10 @@ func (s *Server) householdCandidates(ctx context.Context, p household.Preference
 		Page  int
 		Seeds []householdSeed
 	}{p, kind, page, seeds})
-	key := string(raw)
-	cache := &s.householdCatalog
-	cache.mu.Lock()
-	if entry := cache.entries[key]; entry != nil {
-		if entry.ready != nil {
-			ready := entry.ready
-			cache.mu.Unlock()
-			select {
-			case <-ready:
-				return s.householdCandidates(ctx, p, kind, page, seeds)
-			case <-ctx.Done():
-				return nil, "Discovery is taking too long. Try again shortly.", false
-			}
-		}
-		if time.Now().Before(entry.expires) {
-			items, warning, more := entry.items, entry.warning, entry.more
-			cache.mu.Unlock()
-			return items, warning, more
-		}
-	}
-	if cache.entries == nil || len(cache.entries) > 32 {
-		cache.entries = map[string]*householdCatalogEntry{}
-	}
-	entry := &householdCatalogEntry{ready: make(chan struct{})}
-	cache.entries[key] = entry
-	cache.mu.Unlock()
-	items, warning, more := s.fetchHouseholdCandidates(ctx, p, kind, page, seeds)
-	cache.mu.Lock()
-	entry.items = items
-	entry.warning = warning
-	entry.more = more
-	entry.expires = time.Now().Add(10 * time.Minute)
-	if warning != "" {
-		entry.expires = time.Now().Add(30 * time.Second)
-	}
-	ready := entry.ready
-	entry.ready = nil
-	close(ready)
-	cache.mu.Unlock()
-	return items, warning, more
+	key := fmt.Sprintf("imdb-v2:%t:%s:%s", s.householdIMDb != nil, s.infoLanguage(), raw)
+	return s.householdCatalog.load(ctx, key, s.cfg.ConfigDir, func(loadCtx context.Context) ([]household.Title, string, bool) {
+		return s.fetchHouseholdCandidates(loadCtx, p, kind, page, seeds)
+	})
 }
 
 func householdDiscoveryEligible(t household.Title, p household.Preferences, now time.Time) bool {
@@ -149,7 +113,7 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 	}
 	for _, lang := range langs {
 		for _, k := range kinds {
-			base := metadata.DiscoverQuery{Language: lang, MinRating: max(7, int(p.MinRating)), MinVotes: 100, HomeReleased: k == "movie", ReleasedBefore: now.Format("2006-01-02")}
+			base := metadata.DiscoverQuery{Language: lang, MinRating: 0, MinVotes: 0, HomeReleased: k == "movie", ReleasedBefore: now.Format("2006-01-02")}
 			for _, order := range []string{metadata.SortPopular, metadata.SortRating, metadata.SortNewest} {
 				for n := 0; n < 3; n++ {
 					q := base
@@ -275,7 +239,13 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 			}
 			more = more || hasMore
 			for _, t := range items {
-				if !householdDiscoveryEligible(t, p, now) {
+				check := p
+				if s.householdIMDb != nil {
+					check.MinRating = 0
+					t.Rating = 0
+					t.VoteCount = 0
+				}
+				if (s.householdIMDb == nil && !householdDiscoveryEligible(t, p, now)) || (s.householdIMDb != nil && (!household.Eligible(t, check, now) || t.PosterURL == "")) {
 					continue
 				}
 				old, ok := found[t.Key()]
@@ -307,7 +277,21 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 		t.Affinity = min(1, t.Affinity)
 		pool = append(pool, t)
 	}
-	pool = household.Rank(pool, p, now, len(pool))
+	if s.householdIMDb == nil {
+		pool = household.Rank(pool, p, now, len(pool))
+	} else {
+		// Select a bounded provider pool on relevance/popularity, never TMDB scores.
+		sort.SliceStable(pool, func(i, j int) bool {
+			a, b := pool[i], pool[j]
+			if a.Affinity != b.Affinity {
+				return a.Affinity > b.Affinity
+			}
+			if a.Popularity == b.Popularity {
+				return a.Key() < b.Key()
+			}
+			return a.Popularity > b.Popularity
+		})
+	}
 	// Validate actual release dates, not torrent labels or a guessed cinema window.
 	// Bounded top candidates keep cold-start latency and provider requests finite.
 	if len(pool) > 320 {
@@ -315,7 +299,7 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 	}
 	eligible := make([]bool, len(pool))
 	for i, t := range pool {
-		if t.Kind != "movie" {
+		if t.Kind != "movie" && s.householdIMDb == nil {
 			eligible[i] = true
 			continue
 		}
@@ -325,21 +309,48 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 			select {
 			case sem <- struct{}{}:
 			case <-ctx.Done():
-				mu.Lock()
-				failed++
-				mu.Unlock()
 				return
 			}
 			defer func() { <-sem }()
-			d, e := s.displayTMDB().GetMovieDetail(ctx, t.TMDBID)
-			if e != nil {
-				mu.Lock()
-				failed++
-				mu.Unlock()
-				return
+			var imdbID string
+			if t.Kind == "movie" {
+				d, e := s.householdMovieDetail(ctx, t.TMDBID)
+				if e != nil {
+					mu.Lock()
+					failed++
+					mu.Unlock()
+					return
+				}
+				_, home := d.ReleaseWindow()
+				if home.IsZero() || home.After(now) {
+					return
+				}
+				imdbID = d.IMDBID
+			} else {
+				d, e := s.householdShowDetail(ctx, t.TMDBID)
+				if e != nil {
+					mu.Lock()
+					failed++
+					mu.Unlock()
+					return
+				}
+				imdbID = d.ExternalIDs.IMDBID
 			}
-			_, home := d.ReleaseWindow()
-			eligible[i] = !home.IsZero() && !home.After(now)
+			if s.householdIMDb != nil {
+				rating, ok := s.householdIMDb.Lookup(imdbID)
+				if !ok {
+					return
+				}
+				t.Rating = rating.Score
+				t.VoteCount = rating.Votes
+				t.IMDbID = imdbID
+				t.RatingSource = "IMDb"
+				if !householdDiscoveryEligible(t, p, now) {
+					return
+				}
+				pool[i] = t
+			}
+			eligible[i] = true
 		}(i, t)
 	}
 	wg.Wait()
@@ -350,6 +361,9 @@ func (s *Server) fetchHouseholdCandidates(ctx context.Context, p household.Prefe
 		}
 	}
 	warning := ""
+	if s.householdIMDb != nil && !s.householdIMDb.Ready() {
+		warning = "IMDb ratings are loading. Your library and search remain available."
+	}
 	if failed > 0 {
 		warning = "Some discovery sources could not be refreshed. Unverified film releases are withheld; retry to refresh."
 	}
@@ -453,7 +467,7 @@ func householdDiscoveryRails(pool []household.Title, p household.Preferences, li
 		rails = append(rails, householdRail{ID: id, Title: title, Subtitle: subtitle, Items: items})
 	}
 	score := func(t household.Title) float64 { return household.Score(t, p, now) }
-	add("picks", "Your next favourites", "Title connections, your feedback and audience confidence", func(t household.Title) bool { return true }, score)
+	add("picks", "For you", "", func(t household.Title) bool { return true }, score)
 	seedOrder := []string{}
 	seedNames := map[string]string{}
 	seedCounts := map[string]int{}
@@ -478,13 +492,13 @@ func householdDiscoveryRails(pool []household.Title, p household.Preferences, li
 			break
 		}
 		seedRows++
-		add("because-"+key, seedNames[key], "Related titles, filtered for quality and home release", func(t household.Title) bool { return t.SeedKey == key }, score)
+		add("because-"+key, seedNames[key], "", func(t household.Title) bool { return t.SeedKey == key }, score)
 	}
-	add("recent", "Recent, worth a look", "Released in the last two years", func(t household.Title) bool { return t.Year >= now.Year()-1 }, score)
-	add("acclaimed", "Audience favourites", "Strong ratings backed by at least 1,000 TMDB votes", func(t household.Title) bool {
+	add("recent", "New releases", "", func(t household.Title) bool { return t.Year >= now.Year()-1 }, score)
+	add("acclaimed", "Highly rated", "", func(t household.Title) bool {
 		return t.VoteCount >= 1000 && household.BayesianRating(t.Rating, t.VoteCount) >= 7.4
 	}, func(t household.Title) float64 { return household.BayesianRating(t.Rating, t.VoteCount) / 10 })
-	add("underseen", "Beyond the obvious", "Well rated, with a smaller voting audience", func(t household.Title) bool { return t.VoteCount < 4000 && t.Year < now.Year() }, score)
+	add("underseen", "Hidden gems", "", func(t household.Title) bool { return t.VoteCount < 4000 && t.Year < now.Year() }, score)
 	type genre struct {
 		id   int
 		name string

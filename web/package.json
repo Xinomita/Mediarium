@@ -13,7 +13,8 @@
     "i18n": "node tools/i18n-check.mjs",
     "e2e": "playwright test",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --no-warnings --test \"src/**/*.test.ts\""
+    "test": "node --experimental-strip-types --no-warnings --test \"src/**/*.test.ts\"",
+    "dev:tv": "API_TARGET=http://192.168.4.52:8265 vite --host 127.0.0.1 --port 4173 --strictPort"
   },
   "dependencies": {
     "epubjs": "0.3.93",

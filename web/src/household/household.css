@@ -2056,3 +2056,43 @@
   .hh-discovery-hero { height: 620px; }
   .hh-discovery-hero .hh-hero-copy { bottom: 8%; }
 }
+
+/* Shared markup for the TV sidebar stays unobtrusive on desktop and phones. */
+.hh-nav-symbol, .hh-tv-label { display: none; }
+
+/* A selected title is the primary affordance; metadata stays quiet. */
+.hh-feature-title { color: inherit; text-decoration: none; border-radius: .15em; }
+.hh-feature-title:hover { color: #fff; }
+.hh-feature-title:focus-visible { outline: 2px solid #fff; outline-offset: 6px; }
+.hh-preview-toggle, .hh-next-feature { padding: .8rem; }
+.hh-trailer-dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(1100px, 96vw); max-width: 100vw; max-height: 96vh; background: #101115; color: #fff; border: 0; border-radius: 16px; overflow: auto; }
+.hh-trailer-dialog::backdrop { background: #000e; }
+.hh-trailer-dialog > header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; gap: 20px; }
+.hh-trailer-dialog h2 { font-size: clamp(18px, 2vw, 30px); margin: 0; }
+.hh-trailer-video { position: relative; aspect-ratio: 16/9; background: #000; }
+.hh-trailer-video iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
+.hh-trailer-status { position: absolute; inset: 35% 8% auto; text-align: center; color: #ddd; }
+.hh-trailer-controls { position: absolute; bottom: 3%; left: 3%; display: flex; gap: 12px; }
+.hh-trailer-options { display: flex; gap: 12px; padding: 16px 24px; overflow: auto; }
+.hh-trailer-options button { flex-shrink: 0; }
+.hh-trailer-preview { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
+.hh-trailer-preview[data-state="playing"] { opacity: 1; }
+.hh-trailer-preview iframe { position: absolute; width: max(100%, 177.78vh); height: max(100%, 56.25vw); left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.hh-cast-member:focus { outline: 2px solid white; outline-offset: 4px; border-radius: 10px; }
+.hh-cast-member { scroll-margin: 30px; }
+@media (hover: hover) { .hh-title-card:hover { transform: scale(1.075); z-index: 2; } }
+
+/* The featured strip previews on focus; opening always visits the title page. */
+.hh-feature-picker { position: absolute; z-index: 4; inset: auto 5% 22px; display: flex; align-items: stretch; gap: 8px; }
+.hh-feature-choice, .hh-feature-arrow { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 12px; color: #e6e6e8; border: 1px solid #ffffff24; border-radius: 9px; background: #17191ed9; text-decoration: none; }
+.hh-feature-choice { flex: 1; font-size: 13px; }
+.hh-feature-choice span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-feature-choice[aria-current=true] { background: #ffffff24; border-color: #ffffff85; }
+.hh-feature-arrow { flex: 0 0 40px; cursor: pointer; }
+.hh-feature-choice:focus, .hh-feature-arrow:focus { outline: 2px solid white; outline-offset: 2px; background: #eee; color: #17181c; }
+html:not([data-tv="true"]) .hh-discovery-hero .hh-hero-copy { bottom: 96px; }
+@media (max-width: 600px) {
+ html:not([data-tv="true"]) .hh-feature-picker { inset: auto 20px 14px; gap: 5px; }
+ html:not([data-tv="true"]) .hh-feature-choice { min-width: 85px; }
+ html:not([data-tv="true"]) .hh-feature-picker { overflow-x: auto; padding: 3px; }
+}

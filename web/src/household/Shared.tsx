@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Icon from "../components/Icon";
 import type { HouseholdTitle } from "./api";
@@ -65,7 +65,7 @@ export function Artwork({
     >
       {url ? (
         <img
-          src={url}
+          src={url.replace(/(image\.tmdb\.org\/t\/p\/)w\d+\//, `$1${wide ? "w780" : "w342"}/`)}
           alt=""
           loading={eager ? "eager" : "lazy"}
           decoding="async"
@@ -79,7 +79,7 @@ export function Artwork({
     </div>
   );
 }
-export function TitleCard({
+export const TitleCard = memo(function TitleCard({
   title,
   eager = false,
   discovery = false,
@@ -93,6 +93,8 @@ export function TitleCard({
   return (
     <Link
       className="hh-title-card"
+      data-tv-card={`${title.kind}:${title.tmdbId}`}
+      aria-label={[title.title, title.year || "", title.kind === "tv" ? "Series" : "Film", title.available ? "Ready to play" : ""].filter(Boolean).join(". ")}
       to={titleLink(title.kind, title.tmdbId)}
       state={{ title }}
     >
@@ -108,7 +110,7 @@ export function TitleCard({
       )}
       <div className="hh-card-copy">
         <h3>{title.title}</h3>
-        <p>
+        <p className="hh-card-meta">
           {title.year > 0 && <span>{title.year}</span>}
           <span>{title.kind === "tv" ? "Series" : "Film"}</span>
           {!discovery && title.available && (
@@ -117,17 +119,16 @@ export function TitleCard({
             </span>
           )}
         </p>
-        {!!title.rating && <p className="hh-card-rating">TMDB audience <strong>{title.rating.toFixed(1)}</strong><span>/ 10</span></p>}
-        {discovery && title.reason && <p className="hh-card-reason">{title.reason}</p>}
       </div>
     </Link>
   );
-}
+});
 export function Rail({
-  title, subtitle, items, eager = false, discovery = false, poster = false,
+  title, items, rowId, eager = false, discovery = false, poster = false,
 }: {
   title: string;
   subtitle?: string;
+  rowId?: string;
   items: HouseholdTitle[];
   eager?: boolean;
   discovery?: boolean;
@@ -135,12 +136,15 @@ export function Rail({
 }) {
   const rail = useRef<HTMLDivElement>(null);
   const trackId = useId();
-  const [expanded, setExpanded] = useState(false);
+  const expanded = false;
   const [edges, setEdges] = useState({ start: true, end: true });
   useEffect(() => {
     const el = rail.current;
     if (!el || expanded) return;
-    const measure = () => setEdges({ start: el.scrollLeft < 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+    const measure = () => {
+      const start = el.scrollLeft < 2, end = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2;
+      setEdges(old => old.start === start && old.end === end ? old : { start, end });
+    };
     measure();
     const resize = new ResizeObserver(measure);
     resize.observe(el);
@@ -152,11 +156,10 @@ export function Rail({
     left: direction * rail.current.clientWidth * .82,
     behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
   });
-  return <section className={`hh-rail ${poster ? "hh-poster-rail" : ""} ${expanded ? "hh-rail-expanded" : ""}`} aria-label={title}>
+  return <section className={`hh-rail ${poster ? "hh-poster-rail" : ""} ${expanded ? "hh-rail-expanded" : ""}`} aria-label={title} data-tv-row={rowId || title}>
     <div className="hh-section-head">
-      <div><h2>{title}</h2>{subtitle && <p className="hh-shelf-subtitle">{subtitle}</p>}</div>
+      <div><h2>{title}</h2></div>
       <div className="hh-rail-buttons">
-        {discovery && <button className="hh-shelf-toggle" aria-expanded={expanded} aria-controls={trackId} aria-label={`${expanded ? "Collapse" : "See all"} ${title}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "Show shelf" : "See all"}<span>{items.length}</span></button>}
         {!expanded && <><button className="hh-round" disabled={edges.start} aria-label={`Previous titles in ${title}`} aria-controls={trackId} onClick={() => move(-1)}><Icon name="chevron-left" size={19} /></button>
           <button className="hh-round" disabled={edges.end} aria-label={`More titles in ${title}`} aria-controls={trackId} onClick={() => move(1)}><Icon name="chevron-right" size={19} /></button></>}
       </div>

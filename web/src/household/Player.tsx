@@ -4,6 +4,7 @@ import type { TitleFile } from "../api";
 import Icon from "../components/Icon";
 import { household, type Kind, type Playback } from "./api";
 import { errorText, timeLabel } from "./utils";
+import "./tv-player.css";
 
 export default function HouseholdPlayer({
   kind,
@@ -18,6 +19,11 @@ export default function HouseholdPlayer({
   title: string;
   onClose: () => void;
 }) {
+  const tv = document.documentElement.dataset.tv === "true";
+  const [paused, setPaused] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [subtitle, setSubtitle] = useState(-1);
+  const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const infoRef = useRef<Playback | null>(null);
@@ -33,6 +39,21 @@ export default function HouseholdPlayer({
   const [duration, setDuration] = useState(0);
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const clock = useRef({ position: 0, duration: 0 });
+  const wakeControls = useCallback(() => {
+    setControlsVisible(true);
+    if (idle.current) clearTimeout(idle.current);
+    idle.current = setTimeout(() => { if (video.current && !video.current.paused && !video.current.ended) setControlsVisible(false); }, 4500);
+  }, []);
+  useEffect(() => {
+    if (!tv) return;
+    document.addEventListener("tv-activity", wakeControls);
+    return () => { document.removeEventListener("tv-activity", wakeControls); if (idle.current) clearTimeout(idle.current); };
+  }, [tv, wakeControls]);
+  const applySubtitles = useCallback(() => {
+    const tracks = video.current?.textTracks;
+    if (tracks) for (let i = 0; i < tracks.length; i++) tracks[i].mode = i === subtitle ? "showing" : "disabled";
+  }, [subtitle]);
+  useEffect(() => { applySubtitles(); }, [applySubtitles, info]);
   const save = useCallback(
     async (force = false) => {
       const value = clock.current;
@@ -216,6 +237,8 @@ export default function HouseholdPlayer({
     <dialog
       ref={dialog}
       className="hh-player"
+      data-controls-visible={controlsVisible || paused || loading || !!error}
+      onPointerMove={tv ? wakeControls : undefined}
       onCancel={(e) => {
         e.preventDefault();
         close();
@@ -234,11 +257,13 @@ export default function HouseholdPlayer({
       <div className="hh-video-wrap">
         <video
           ref={video}
-          controls
+          controls={!tv}
           playsInline
           autoPlay
           onTimeUpdate={timeUpdate}
-          onPause={() => void save(true)}
+          onPlay={() => { setPaused(false); if (tv) wakeControls(); }}
+          onLoadedMetadata={applySubtitles}
+          onPause={() => { setPaused(true); setControlsVisible(true); void save(true); }}
           onEnded={() => void save(true)}
           aria-label={title}
         >
@@ -276,7 +301,20 @@ export default function HouseholdPlayer({
           </div>
         )}
       </div>
-      {info?.mode === "hls" && duration > 0 && (
+      {tv && <div className="hh-tv-player-controls">
+        <div className="hh-tv-player-title"><span>{kind === "tv" ? "Series" : "Film"}</span><h2>{title}</h2></div>
+        <div className="hh-tv-player-actions">
+          <button type="button" data-tv-primary aria-label={paused ? "Play" : "Pause"} onClick={() => {
+            const el = video.current;
+            if (!el) return;
+            if (el.paused) void el.play().catch(() => undefined); else el.pause();
+          }}><Icon name={paused ? "play" : "pause"} size={22} /></button>
+          <button type="button" aria-label="Back 10 seconds" disabled={!info || loading} onClick={() => seek(clock.current.position - 10)}><Icon name="chevron-left" size={18} /><span>10s</span></button>
+          <button type="button" aria-label="Forward 10 seconds" disabled={!info || loading} onClick={() => seek(clock.current.position + 10)}><span>10s</span><Icon name="chevron-right" size={18} /></button>
+          {!!info?.subtitles.length && <label className="hh-tv-subtitles">Subtitles<select aria-label="Subtitles" value={subtitle} onChange={e => setSubtitle(Number(e.target.value))}><option value={-1}>Off</option>{info.subtitles.map((track, index) => <option key={track.url} value={index}>{track.label || track.language || `Track ${index + 1}`}</option>)}</select></label>}
+        </div>
+      </div>}
+      {(info?.mode === "hls" || tv) && duration > 0 && (
         <div className="hh-player-timeline">
           <label htmlFor="playback-position">Playback position</label>
           <span>{timeLabel(seekDraft ?? position)}</span>

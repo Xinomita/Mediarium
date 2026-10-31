@@ -26,6 +26,8 @@ import { bytes, errorText, titleKey, queueLabel, clampProgress } from "./utils";
 import { usePoll } from "./usePoll";
 import { invalidateHome } from "./cache";
 import Releases from "./Releases";
+import { titleMetadata } from "./titleMetadata";
+import { TrailerDialog } from "./Trailer";
 const Player = lazy(() => import("./Player"));
 
 interface TitleState {
@@ -52,8 +54,12 @@ export default function HouseholdDetail() {
 function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
   const { user } = useAuth();
   const location = useLocation();
+  const userId = user?.id ?? 0;
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const seed = (location.state as { title?: HouseholdTitle } | null)?.title;
   const [season, setSeason] = useState(1);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [watchActive, setWatchActive] = useState(false);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [action, setAction] = useState("");
   const [error, setError] = useState("");
@@ -72,9 +78,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
     let detail: MovieDetail | TVDetail;
     let metadataWarning = "";
     try {
-      detail = await (kind === "movie"
-        ? api.tmdbMovieDetail(tmdbId)
-        : api.tmdbTVDetail(tmdbId));
+      detail = await titleMetadata(userId, kind, tmdbId);
     } catch (e) {
       const local =
         kind === "movie"
@@ -127,9 +131,10 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
           .sort((a, b) => b.at.localeCompare(a.at))
           .slice(0, 5);
     }
+    setWatchActive(queue.some(q => ["queued", "downloading", "importing"].includes(q.status)));
     return { detail, series, files, queue, events, fileError, metadataWarning };
-  }, [kind, tmdbId, playable]);
-  const state = usePoll(load, 5000, !playing);
+  }, [kind, tmdbId, playable, userId]);
+  const state = usePoll(load, watchActive ? 5000 : 0, !playing && !trailerOpen);
   useEffect(() => {
     let live = true;
     void household
@@ -149,7 +154,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
       document.title = `${state.data.detail.title} · Mediarium`;
   }, [state.data?.detail.title]);
   const data = state.data;
-  const detail = data?.detail;
+  const detail: MovieDetail | TVDetail | undefined = data?.detail || (seed ? { tmdbId: seed.tmdbId, title: seed.title, year: seed.year, overview: seed.overview, backdropUrl: seed.backdropUrl, posterUrl: seed.posterUrl, genres: seed.genres, libraryId: seed.libraryId } : undefined);
   const id = detail?.libraryId;
   const episodes = data?.series?.episodes || [];
   const seasons = [
@@ -294,7 +299,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
     );
   return (
     <>
-      <section className="hh-hero hh-detail-hero">
+      <section className="hh-hero hh-detail-hero" data-tv-row="detail-hero">
         {(detail.backdropUrl || seed?.backdropUrl) && (
           <img
             className="hh-hero-image"
@@ -323,10 +328,10 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
             {detail.genres?.slice(0, 2).map((g) => (
               <span key={g}>{g}</span>
             ))}
-            {!!detail.rating && (
+            {!!detail.imdbRating && (
               <span>
                 <Icon name="star" size={13} />
-                TMDB audience {detail.rating.toFixed(1)} / 10
+                IMDb {detail.imdbRating?.toFixed(1)}
               </span>
             )}
           </p>
@@ -351,7 +356,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
                 <Icon name="download" size={18} />
                 View download
               </Link>
-            ) : writable &&
+            ) : data && writable &&
               can(user, kind === "movie" ? "movies" : "tv") &&
               (!id || can(user, "manage")) ? (
               <button
@@ -369,6 +374,8 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
                       : "Download"}
               </button>
             ) : null}
+            {!!detail.trailers?.length && <button className="hh-button hh-glass" onClick={() => setTrailerOpen(true)}><Icon name="play" size={19} />Trailer</button>}
+            {!!detail.cast?.length && <button className="hh-button hh-glass" onClick={() => document.querySelector<HTMLElement>(".hh-cast-member")?.focus()}>Cast</button>}
             {prefs && (
               <button
                 className={`hh-button hh-glass ${prefs.watchlist.includes(key) ? "selected" : ""}`}
@@ -438,7 +445,6 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
         )}
         {prefs && (
           <div className="hh-feedback">
-            <span>How does this fit your taste?</span>
             <button
               disabled={feedbackBusy}
               aria-pressed={prefs.liked.includes(key)}
@@ -513,7 +519,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
                                 ? "Downloading on server"
                                 : ep.airDate &&
                                     ep.airDate >
-                                      new Date().toISOString().slice(0, 10)
+                                      today
                                   ? `Coming ${ep.airDate}`
                                   : "Not downloaded"}
                             </span>
@@ -605,13 +611,13 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
           </section>
         )}
         {!!detail.cast?.length && (
-          <section className="hh-cast">
+          <section className="hh-cast" data-tv-row="cast">
             <div className="hh-section-head">
               <h2>Cast</h2>
             </div>
             <div className="hh-cast-track">
-              {detail.cast.slice(0, 12).map((p, i) => (
-                <div className="hh-cast-member" key={p.id || i}>
+              {detail.cast.map((p, i) => (
+                <div className="hh-cast-member" tabIndex={0} key={p.id || i} aria-label={`${p.name}${p.character ? ` as ${p.character}` : ""}`}>
                   {p.profileUrl ? (
                     <img src={p.profileUrl} alt="" loading="lazy" />
                   ) : (
@@ -647,6 +653,7 @@ function TitlePage({ kind, tmdbId }: { kind: Kind; tmdbId: number }) {
           </details>
         )}
       </div>
+      {trailerOpen && <TrailerDialog title={detail.title} trailers={detail.trailers || []} onClose={() => setTrailerOpen(false)} />}
       {releases && (
         <Releases
           kind={kind}

@@ -7,7 +7,8 @@ import { HOME_INVALIDATED, readHomeCache, writeHomeCache } from "./cache";
 import { household, type HomeResponse, type Kind } from "./api";
 import { Empty, Loading, Problem, Rail, TitleCard } from "./Shared";
 import { discoveryRails, genreTitles, mergeHomePages } from "./discovery";
-import { errorText, titleLink } from "./utils";
+import { errorText } from "./utils";
+import Featured from "./Featured";
 
 export default function HouseholdHome() {
   const { user } = useAuth();
@@ -66,23 +67,9 @@ function Discovery({ userId, kind, admin }: { userId: number; kind?: Kind; admin
     ? candidate : (genre ? matching : allRails.flatMap((r) => r.items)).find((t) => t.backdropUrl);
   const heading = kind === "movie" ? "Discover films" : kind === "tv" ? "Discover series" : "Discover";
   return <>
-    {hero && <section className={`hh-hero hh-discovery-hero ${hero.backdropUrl ? "" : "hh-hero-no-art"}`} aria-label={hero.title}>
-      {hero.backdropUrl && <img className="hh-hero-image" src={hero.backdropUrl} alt="" fetchPriority="high" />}
-      <div className="hh-hero-shade" />
-      <div className="hh-hero-copy">
-        <p className="hh-eyebrow">{kind === "tv" ? "Your next series" : kind === "movie" ? "Your next film" : "Something new for tonight"}</p>
-        <h1>{hero.title}</h1>
-        <p className="hh-hero-meta"><span>{hero.year || ""}</span><span>{hero.kind === "tv" ? "Series" : "Film"}</span>{hero.genres?.slice(0, 2).map((g) => <span key={g}>{g}</span>)}
-          {!!hero.rating && <span>TMDB audience {hero.rating.toFixed(1)} / 10</span>}
-        </p>
-        {hero.overview && <p className="hh-hero-overview">{hero.overview}</p>}
-        <div className="hh-actions"><Link className="hh-button hh-primary" to={titleLink(hero.kind, hero.tmdbId)} state={{ title: hero }}><Icon name="info" size={19} />Explore title</Link>
-          <Link className="hh-button hh-glass" to="/watch/preferences"><Icon name="sliders" size={18} />Your taste</Link></div>
-        {hero.reason && <p className="hh-reason">{hero.reason}</p>}
-      </div>
-    </section>}
+    {hero && <Featured userId={userId} titles={genre ? matching : allRails.flatMap(r => r.items)} />}
     <div className={`hh-home-content ${hero ? "" : "hh-discovery-no-hero"}`}>
-      <div className="hh-discovery-toolbar">
+      <div className="hh-discovery-toolbar" data-tv-row="discovery-tools">
         {hero ? <h2>{heading}</h2> : <h1>{heading}</h1>}
         <div className="hh-discovery-tools"><div className="hh-genre-filter"><label htmlFor="discovery-genre">Genre</label><select id="discovery-genre" value={genre} onChange={(e) => setGenre(e.target.value)}><option value="">All genres</option>{genres.map((g) => <option key={g} value={g}>{g}</option>)}</select></div><Link to="/watch/search" className="hh-discovery-search"><Icon name="search" size={17} />Search</Link></div>
       </div>
@@ -95,7 +82,7 @@ function Discovery({ userId, kind, admin }: { userId: number; kind?: Kind; admin
         </div>;
       })}
       {hasItems ? genre ? (
-        <section className="hh-rail hh-poster-rail" aria-labelledby="genre-results-heading">
+        <section className="hh-rail hh-poster-rail" aria-labelledby="genre-results-heading" data-tv-row={`genre:${genre}`}>
           <div className="hh-section-head">
             <h2 id="genre-results-heading">{genre}</h2>
             <p className="hh-muted" role="status">{matching.length} {matching.length === 1 ? "title" : "titles"}</p>
@@ -104,8 +91,8 @@ function Discovery({ userId, kind, admin }: { userId: number; kind?: Kind; admin
             {matching.map((title, i) => <TitleCard key={`${title.kind}:${title.tmdbId}`} title={title} discovery poster eager={i < 6} />)}
           </div>
         </section>
-      ) : allRails.map((r, i) => <Rail key={r.id} title={r.title} subtitle={r.subtitle} items={r.items} eager={i === 0} discovery poster={i > 0} />) : <Empty title={genre ? `No ${genre.toLowerCase()} picks in these shelves` : "Find your next good watch"}>{genre ? "Explore more to load another selection, or choose a different genre." : <Link to="/watch/preferences">Choose genres and languages to shape discovery.</Link>}</Empty>}
-      <div className="hh-explore-more">
+      ) : allRails.map((r, i) => <Rail key={r.id} rowId={r.id} title={r.title} items={r.items} eager={i === 0} discovery poster={i > 0} />) : <Empty title={genre ? `No ${genre.toLowerCase()} picks in these shelves` : "Find your next good watch"}>{genre ? "Explore more to load another selection, or choose a different genre." : <Link to="/watch/preferences">Choose genres and languages to shape discovery.</Link>}</Empty>}
+      <div className="hh-explore-more" data-tv-row="explore-more">
         {moreError && <Problem message={moreError} retry={() => void loadMore()} />}
         {data.hasMore && <button className="hh-button hh-secondary" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Finding more titles…" : "Explore more"}<Icon name="chevron-down" size={17} /></button>}
         <p role="status" aria-live="polite">{loadingMore ? "Loading the next selection" : !data.hasMore && hasItems ? "You’re up to date with these picks." : ""}</p>

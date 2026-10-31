@@ -48,11 +48,13 @@ func crewPayloads(groups ...[]metadata.CrewMember) []crewPayload {
 }
 
 type movieDetailPayload struct {
-	TMDBID    int    `json:"tmdbId"`
-	Title     string `json:"title"`
-	Year      int    `json:"year"`
-	Overview  string `json:"overview,omitempty"`
-	PosterURL string `json:"posterUrl,omitempty"`
+	IMDbRating float64 `json:"imdbRating,omitempty"`
+	IMDbVotes  int     `json:"imdbVotes,omitempty"`
+	TMDBID     int     `json:"tmdbId"`
+	Title      string  `json:"title"`
+	Year       int     `json:"year"`
+	Overview   string  `json:"overview,omitempty"`
+	PosterURL  string  `json:"posterUrl,omitempty"`
 	// BackdropURL is a wide still for the top of the title page.
 	BackdropURL string `json:"backdropUrl,omitempty"`
 	LibraryID   int64  `json:"libraryId,omitempty"` // 0 if not yet added to the library
@@ -109,7 +111,7 @@ func (s *Server) handleTMDBMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmdbMovie, err := s.displayTMDB().GetMovieDetail(r.Context(), tmdbID)
+	tmdbMovie, err := s.householdMovieDetail(r.Context(), tmdbID)
 	if err != nil {
 		if s.writeHouseholdLibraryMovie(w, r, tmdbID) {
 			return
@@ -148,6 +150,10 @@ func (s *Server) handleTMDBMovieDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if rating, ok := s.householdIMDb.Lookup(payload.IMDBID); ok {
+		payload.IMDbRating = rating.Score
+		payload.IMDbVotes = rating.Votes
+	}
 	writeJSON(w, http.StatusOK, payload)
 }
 
@@ -177,11 +183,13 @@ func (s *Server) handleTMDBSimilarMovies(w http.ResponseWriter, r *http.Request)
 }
 
 type tvDetailPayload struct {
-	TMDBID    int    `json:"tmdbId"`
-	Title     string `json:"title"`
-	Year      int    `json:"year"`
-	Overview  string `json:"overview,omitempty"`
-	PosterURL string `json:"posterUrl,omitempty"`
+	IMDbRating float64 `json:"imdbRating,omitempty"`
+	IMDbVotes  int     `json:"imdbVotes,omitempty"`
+	TMDBID     int     `json:"tmdbId"`
+	Title      string  `json:"title"`
+	Year       int     `json:"year"`
+	Overview   string  `json:"overview,omitempty"`
+	PosterURL  string  `json:"posterUrl,omitempty"`
 	// BackdropURL is a wide still for the top of the title page.
 	BackdropURL string `json:"backdropUrl,omitempty"`
 	LibraryID   int64  `json:"libraryId,omitempty"` // series id; 0 if not yet added to the library
@@ -247,7 +255,7 @@ func (s *Server) handleTMDBTVDetail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionFailed, "Add your TMDB API key first (Settings > Info, lists and subtitles > Movie and show info).")
 		return
 	}
-	show, err := s.displayTMDB().GetShowFull(r.Context(), tmdbID)
+	show, err := s.householdShowDetail(r.Context(), tmdbID)
 	if err != nil {
 		if s.writeHouseholdLibraryShow(w, r, tmdbID) {
 			return
@@ -272,6 +280,10 @@ func (s *Server) handleTMDBTVDetail(w http.ResponseWriter, r *http.Request) {
 	} else if ok {
 		payload.LibraryID = series.ID
 		payload.Status = s.seriesLibraryState(series)
+	}
+	if rating, ok := s.householdIMDb.Lookup(payload.IMDBID); ok {
+		payload.IMDbRating = rating.Score
+		payload.IMDbVotes = rating.Votes
 	}
 	writeJSON(w, http.StatusOK, payload)
 }

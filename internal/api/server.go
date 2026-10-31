@@ -7,8 +7,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/rdborg/mediarium/internal/imdb"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -48,6 +50,7 @@ import (
 
 type Server struct {
 	householdCatalog  householdCatalog
+	householdIMDb     *imdb.Store
 	householdPlayback householdPlaybackState
 	resumeStop        context.CancelFunc // ends the resume of interrupted downloads (resume_interrupted.go)
 	streamPause       streamPauseState   // pause while someone is watching (stream_pause.go)
@@ -264,6 +267,9 @@ func New(db *sql.DB, cfg config.Config, box *crypto.Box, defaultTMDBAPIKey, vers
 	s.QueueRepo.SetBox(box) // download addresses carry indexer keys: kept encrypted
 	s.startProblems()
 	s.applyDebugLogging()
+	if os.Getenv("HOUSEHOLD_IMDB_RATINGS") == "1" {
+		s.householdIMDb = imdb.New(cfg.ConfigDir)
+	}
 	s.Definitions = indexers.NewDefinitionStore(filepath.Join(cfg.ConfigDir, "indexer-definitions"))
 	s.Definitions.CustomDir = filepath.Join(cfg.ConfigDir, "indexer-definitions-custom")
 	s.Cardigann = indexers.NewCardigannManager(s.Definitions, s.flareSolverrURL)

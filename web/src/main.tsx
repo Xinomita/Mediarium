@@ -1,3 +1,4 @@
+import './household/tv'
 import { loadLanguage } from './i18n'
 
 // Dark unless light was picked (ThemeToggle.tsx), set before anything paints.

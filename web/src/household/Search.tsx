@@ -7,6 +7,9 @@ import { errorText, searchTitle } from "./utils";
 
 export default function HouseholdSearch() {
   const [params, setParams] = useSearchParams();
+  const tv = document.documentElement.dataset.tv === "true";
+  const [numbers, setNumbers] = useState(false);
+  const firstKey = useRef<HTMLButtonElement>(null);
   const [value, setValue] = useState(params.get("q") || "");
   const [results, setResults] = useState<TitleResult[]>([]);
   const [kind, setKind] = useState("all");
@@ -16,8 +19,9 @@ export default function HouseholdSearch() {
   const input = useRef<HTMLInputElement>(null);
   const q = params.get("q") || "";
   useEffect(() => {
-    input.current?.focus();
-  }, []);
+    if (tv) firstKey.current?.focus();
+    else input.current?.focus();
+  }, [tv]);
   useEffect(() => {
     setValue(q);
   }, [q]);
@@ -76,6 +80,17 @@ export default function HouseholdSearch() {
           />
         </div>
       </form>
+      {tv && <div className="hh-tv-keyboard" aria-label="Search keyboard">
+        <div className="hh-tv-letter-row">
+          {(numbers ? "0123456789" : "ABCDEFGHIJKLMNOPQRSTUVWXYZ").split("").map((letter, index) => <button key={letter} ref={index === 0 ? firstKey : undefined} type="button" aria-label={letter} onClick={() => setValue(v => v + letter.toLowerCase())}>{letter}</button>)}
+        </div>
+        <div className="hh-tv-keyboard-actions">
+          <button type="button" onClick={() => setNumbers(v => !v)}>{numbers ? "ABC" : "123"}</button>
+          <button type="button" onClick={() => setValue(v => v + " ")}>Space</button>
+          <button type="button" onClick={() => setValue(v => v.slice(0, -1))}>Delete</button>
+          <button type="button" onClick={() => setValue("")}>Clear</button>
+        </div>
+      </div>}
       {q && (
         <div className="hh-segments" aria-label="Search result type">
           {[
