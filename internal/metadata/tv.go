@@ -10,17 +10,18 @@ import (
 // Show is the subset of TMDB's TV-show fields the rest of the app needs
 // (search results and trending/popular lists share this shape).
 type Show struct {
-	TMDBID       int     `json:"id"`
-	Name         string  `json:"name"`
-	Overview     string  `json:"overview"`
-	FirstAirDate string  `json:"first_air_date"`
-	PosterPath   string  `json:"poster_path"`
-	BackdropPath string  `json:"backdrop_path"`
-	VoteAverage  float64 `json:"vote_average"`
-	VoteCount    int     `json:"vote_count"`
-	Popularity   float64 `json:"popularity"`
-	GenreIDs     []int   `json:"genre_ids"`
-	Genres       []Genre `json:"genres"` // only on the single-show endpoint
+	OriginalLanguage string  `json:"original_language"`
+	TMDBID           int     `json:"id"`
+	Name             string  `json:"name"`
+	Overview         string  `json:"overview"`
+	FirstAirDate     string  `json:"first_air_date"`
+	PosterPath       string  `json:"poster_path"`
+	BackdropPath     string  `json:"backdrop_path"`
+	VoteAverage      float64 `json:"vote_average"`
+	VoteCount        int     `json:"vote_count"`
+	Popularity       float64 `json:"popularity"`
+	GenreIDs         []int   `json:"genre_ids"`
+	Genres           []Genre `json:"genres"` // only on the single-show endpoint
 	// Only on the single-show endpoint: the producing countries ("JP") and
 	// TMDB's kind of show ("Scripted", "Talk Show", "News", ...).
 	OriginCountry []string `json:"origin_country"`

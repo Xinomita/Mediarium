@@ -46,6 +46,14 @@ const Search = page(() => import('./pages/Search'))
 const SeriesDetail = page(() => import('./pages/SeriesDetail'))
 const ShowDetail = page(() => import('./pages/ShowDetail'))
 const Person = page(() => import('./pages/Person'))
+const HouseholdShell = page(() => import('./household/Shell'))
+const HouseholdHome = page(() => import('./household/Home'))
+const HouseholdDetail = page(() => import('./household/Detail'))
+const HouseholdSearch = page(() => import('./household/Search'))
+const HouseholdLibrary = page(() => import('./household/Library'))
+const HouseholdDownloads = page(() => import('./household/Downloads'))
+const HouseholdPreferences = page(() => import('./household/Preferences'))
+
 
 // Fetches the pages above one after another once the browser has nothing else to do.
 function fetchPagesWhenIdle() {
@@ -165,8 +173,18 @@ function Gate() {
           </Suspense>
         }
       />
+      <Route path="/watch" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdShell /></Suspense>}>
+        <Route index element={<Suspense fallback={<Splash label="Loading" />}><HouseholdHome /></Suspense>} />
+        <Route path="title/:kind/:tmdbId" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdDetail /></Suspense>} />
+        <Route path="search" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdSearch /></Suspense>} />
+        <Route path="library" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdLibrary key="library" /></Suspense>} />
+        <Route path="list" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdLibrary key="list" watchlist /></Suspense>} />
+        <Route path="downloads" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdDownloads /></Suspense>} />
+        <Route path="preferences" element={<Suspense fallback={<Splash label="Loading" />}><HouseholdPreferences /></Suspense>} />
+      </Route>
       <Route element={<AppShell />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Navigate to="/watch" replace />} />
+        <Route path="/manage" element={<Dashboard />} />
         <Route path="/search" element={<Search />} />
         <Route path="/search/releases" element={<ReleaseSearch />} />
         <Route path="/stats" element={<Navigate to="/settings/statistics" replace />} />

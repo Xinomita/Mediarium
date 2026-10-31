@@ -102,12 +102,18 @@ func (s *Server) handleTMDBMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.TMDB().HasAPIKey() {
+		if s.writeHouseholdLibraryMovie(w, r, tmdbID) {
+			return
+		}
 		writeError(w, http.StatusPreconditionFailed, "Add your TMDB API key first (Settings > Info, lists and subtitles > Movie and show info).")
 		return
 	}
 
 	tmdbMovie, err := s.displayTMDB().GetMovieDetail(r.Context(), tmdbID)
 	if err != nil {
+		if s.writeHouseholdLibraryMovie(w, r, tmdbID) {
+			return
+		}
 		writeUpstreamError(w, "look up that movie", err)
 		return
 	}
@@ -235,11 +241,17 @@ func (s *Server) handleTMDBTVDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.TMDB().HasAPIKey() {
+		if s.writeHouseholdLibraryShow(w, r, tmdbID) {
+			return
+		}
 		writeError(w, http.StatusPreconditionFailed, "Add your TMDB API key first (Settings > Info, lists and subtitles > Movie and show info).")
 		return
 	}
 	show, err := s.displayTMDB().GetShowFull(r.Context(), tmdbID)
 	if err != nil {
+		if s.writeHouseholdLibraryShow(w, r, tmdbID) {
+			return
+		}
 		writeUpstreamError(w, "look up that show", err)
 		return
 	}

@@ -34,6 +34,11 @@ const readOnlyKeyMessage = "This API key is read-only. It can only be used for G
 // profile, password, second step, passkeys and reading place), never the
 // library, the downloads or the settings.
 var viewerWritable = map[string]bool{
+	"PUT /api/household/preferences":           true,
+	"POST /api/household/playback":             true,
+	"DELETE /api/household/playback/{session}": true,
+	"PUT /api/household/progress":              true,
+
 	"PUT /api/auth/profile":                   true,
 	"POST /api/auth/change-password":          true,
 	"DELETE /api/auth/sessions":               true,

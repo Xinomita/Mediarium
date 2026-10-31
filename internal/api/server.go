@@ -47,13 +47,15 @@ import (
 )
 
 type Server struct {
-	resumeStop  context.CancelFunc // ends the resume of interrupted downloads (resume_interrupted.go)
-	streamPause streamPauseState   // pause while someone is watching (stream_pause.go)
-	libStats    libraryStatsCache  // the Statistics page's answer, kept for a few minutes (stats_library.go)
-	mediaInfo   mediaInfoState     // what the video files hold, read from their headers (media_info.go)
-	appFrames   atomic.Value       // []string: the origins of add-ons shown in a frame, kept in memory so the security headers never wait for the database (app_links.go)
-	cfg         config.Config
-	db          *sql.DB // for backups (VACUUM INTO); repos hold their own handles
+	householdCatalog  householdCatalog
+	householdPlayback householdPlaybackState
+	resumeStop        context.CancelFunc // ends the resume of interrupted downloads (resume_interrupted.go)
+	streamPause       streamPauseState   // pause while someone is watching (stream_pause.go)
+	libStats          libraryStatsCache  // the Statistics page's answer, kept for a few minutes (stats_library.go)
+	mediaInfo         mediaInfoState     // what the video files hold, read from their headers (media_info.go)
+	appFrames         atomic.Value       // []string: the origins of add-ons shown in a frame, kept in memory so the security headers never wait for the database (app_links.go)
+	cfg               config.Config
+	db                *sql.DB // for backups (VACUUM INTO); repos hold their own handles
 
 	Auth              *auth.Service
 	Settings          *settings.Store
@@ -316,7 +318,8 @@ func New(db *sql.DB, cfg config.Config, box *crypto.Box, defaultTMDBAPIKey, vers
 	queue.SetNewestFirst(s.newestFirstOn())
 	s.refreshAppFrames()
 	s.dispatch = s.newDispatcher()
-	s.applyFilePerms()   // the saved file and folder modes for new library files
+	s.applyFilePerms() // the saved file and folder modes for new library files
+	s.clearHouseholdPlaybackCache()
 	s.recoverAtStartup() // downloads that were running come back paused; stuck titles are put right
 	return s, nil
 }
@@ -460,6 +463,18 @@ func (s *Server) protectedRoutes() *routeTable {
 	subs := member.Need(auth.PermSubtitles)
 
 	// ---- Members and administrators ----
+
+	// Household discovery and playback use the same authenticated account.
+	member.HandleFunc("GET /api/household/home", s.handleHouseholdHome)
+	member.HandleFunc("GET /api/household/library", s.handleHouseholdLibrary)
+	member.HandleFunc("GET /api/household/art/{kind}/{id}/{variant}", s.handleHouseholdArt)
+	member.HandleFunc("GET /api/household/preferences", s.handleHouseholdPreferences)
+	member.HandleFunc("PUT /api/household/preferences", s.handleHouseholdSavePreferences)
+	play.HandleFunc("POST /api/household/playback", s.handleHouseholdPlay)
+	play.HandleFunc("DELETE /api/household/playback/{session}", s.handleHouseholdStop)
+	play.HandleFunc("GET /api/household/playback/{session}/{file}", s.handleHouseholdSegment)
+	play.HandleFunc("GET /api/household/subtitles", s.handleHouseholdSubtitles)
+	play.HandleFunc("PUT /api/household/progress", s.handleHouseholdProgress)
 
 	// Their own account.
 	member.HandleFunc("GET /api/auth/me", s.handleMe)

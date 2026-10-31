@@ -27,6 +27,7 @@ type pipelineRegistry struct {
 // Closing a torrent engine can hang on a bad connection, so it gets half of
 // it at most and is left behind after that; the program is exiting anyway.
 func (s *Server) Shutdown(wait time.Duration) {
+	s.stopHouseholdPlaybacks()
 	deadline := time.Now().Add(wait)
 	if s.resumeStop != nil {
 		s.resumeStop()

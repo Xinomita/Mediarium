@@ -35,3 +35,11 @@ Thumbs.db
 
 # Agent and editor tooling stays out of the repo
 /music/
+
+# Isolated household build and verification state
+/.household-*
+/.local/
+
+.household-*
+household-data/
+.local/

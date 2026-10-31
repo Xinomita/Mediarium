@@ -1,0 +1,25 @@
+# Local fork build. No credentials are compiled into the image.
+FROM node:26-alpine AS web
+WORKDIR /src/web
+COPY web/package*.json ./
+RUN npm ci --no-audit --no-fund
+COPY docs/ /src/docs/
+COPY web/ ./
+RUN npm run build
+
+FROM golang:1.27.2-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=web /src/web/dist ./web/dist
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=3.9.0-household.4" -o /out/mediarium ./cmd/app
+
+FROM alpine:3.23
+RUN apk add --no-cache ca-certificates tzdata ffmpeg && addgroup -g 950 mediarium && adduser -D -u 950 -G mediarium mediarium
+COPY --from=build /out/mediarium /usr/local/bin/mediarium
+ENV APP_PORT=8264 CONFIG_DIR=/config DOWNLOADS_DIR=/downloads MOVIES_DIR=/movies TV_DIR=/tv MEDIARIUM_DISABLE_STATS=1
+USER 950:950
+EXPOSE 8264
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD wget -q -O /dev/null http://127.0.0.1:8264/api/version || exit 1
+ENTRYPOINT ["/usr/local/bin/mediarium"]

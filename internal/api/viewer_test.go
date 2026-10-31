@@ -20,6 +20,10 @@ func split(pattern string) (method, path string) {
 // A viewer may only look. These are the few things a viewer may do with a
 // method that changes something, all of them about their own account.
 var viewerMayWrite = map[string]bool{
+	// Household writes affect only this account's tastes, watch position and player.
+	"PUT /api/household/preferences": true, "POST /api/household/playback": true,
+	"DELETE /api/household/playback/{session}": true, "PUT /api/household/progress": true,
+
 	"PUT /api/auth/profile": true, "POST /api/auth/change-password": true, "DELETE /api/auth/sessions": true,
 	"POST /api/auth/two-step/setup": true, "POST /api/auth/two-step/enable": true,
 	"POST /api/auth/two-step/disable": true, "POST /api/auth/two-step/recovery": true,

@@ -1,0 +1,27 @@
+# Isolated household instance. Existing media is optional and read-only.
+services:
+  household:
+    image: mediarium-household:local
+    build:
+      context: .
+      dockerfile: Dockerfile.household
+    restart: unless-stopped
+    ports:
+      - "8265:8264"
+      - "58265:58264/tcp"
+      - "58265:58264/udp"
+    environment:
+      TZ: Australia/Sydney
+      MEDIARIUM_DISABLE_STATS: "1"
+    volumes:
+      - ./household-data/config:/config
+      - ./household-data/downloads:/downloads
+      - ./household-data/movies:/movies
+      - ./household-data/tv:/tv
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 30s
+    mem_limit: 4g
+    cpus: 4.0

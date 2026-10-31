@@ -28,3 +28,7 @@ docs/*
 !docs/*.md
 
 website/
+
+.household-*
+household-data/
+.local/

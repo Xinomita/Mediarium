@@ -164,11 +164,12 @@ func (c *Client) HasAPIKey() bool { return c.key() != "" }
 
 // Movie is the subset of TMDB's movie fields the rest of the app needs.
 type Movie struct {
-	TMDBID      int    `json:"id"`
-	Title       string `json:"title"`
-	Overview    string `json:"overview"`
-	ReleaseDate string `json:"release_date"`
-	PosterPath  string `json:"poster_path"`
+	OriginalLanguage string `json:"original_language"`
+	TMDBID           int    `json:"id"`
+	Title            string `json:"title"`
+	Overview         string `json:"overview"`
+	ReleaseDate      string `json:"release_date"`
+	PosterPath       string `json:"poster_path"`
 	// BackdropPath is a wide still from the film, for the title page.
 	BackdropPath string  `json:"backdrop_path"`
 	VoteAverage  float64 `json:"vote_average"`

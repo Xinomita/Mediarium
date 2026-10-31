@@ -15,6 +15,10 @@ import (
 // It is spelled out here on purpose: opening a route to members has to be a
 // visible, reviewed change to this list, not a side effect.
 var memberRoutes = []string{
+	"GET /api/household/art/{kind}/{id}/{variant}", "GET /api/household/library", "GET /api/household/home", "GET /api/household/preferences", "PUT /api/household/preferences",
+	"POST /api/household/playback", "DELETE /api/household/playback/{session}",
+	"GET /api/household/playback/{session}/{file}", "GET /api/household/subtitles", "PUT /api/household/progress",
+
 	"GET /api/plex-watchlist", "PUT /api/plex-watchlist", "DELETE /api/plex-watchlist", "POST /api/plex-watchlist/pin",
 	"GET /api/plex-watchlist/pin/{pinId}", "POST /api/plex-watchlist/check", "GET /api/plex-watchlist/items",
 	"POST /api/feedback",
